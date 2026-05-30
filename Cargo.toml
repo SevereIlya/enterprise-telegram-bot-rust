@@ -1,0 +1,29 @@
+[package]
+name = "enterprise-bot-core"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+anyhow = "1"
+async-trait = "0.1"
+base62 = "2.2.4"
+base64 = "0.22.1"
+chrono = { version = "0.4", features = ["serde"] }
+config = "0.15"
+serde = { version = "1.0", features = ["derive"] }
+teloxide = { version = "0.17.0", features = ["macros"] }
+thiserror = "2"
+tokio = { version = "1", features = ["full"] }
+tracing = "0.1"
+tracing-subscriber = "0.3"
+uuid = { version = "1", features = ["v4", "v5", "serde"] }
+
+[dependencies.sqlx]
+version = "0.8.6"
+features = [
+    "runtime-tokio-rustls",
+    "postgres",
+    "macros",
+    "chrono",
+    "uuid"
+]
