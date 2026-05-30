@@ -1,0 +1,20 @@
+[general]
+database_url = "postgres://user:password@localhost:5432/db"
+publicbase_url = "https://example.com"
+telegram_token = "123456789:ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+admin_chat_id = 123456789
+
+[payments]
+base_price = 100
+
+[payments.betatransfer]
+public_key = "pub_key"
+secret_key = "sec_key"
+webhook_port = 8080
+ip_whitelist = ["127.0.0.1"]
+
+[vpn]
+nodes = []
+uuid_namespace = "00000000-0000-0000-0000-000000000000"
+
+[vpn.protocols]
