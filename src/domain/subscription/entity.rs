@@ -34,12 +34,48 @@ impl Subscription {
             created_at: Utc::now(),
         }
     }
+
+    /// Проверяет, может ли подписка быть продлена
+    pub fn can_extend(&self) -> bool {
+        self.status == SubscriptionStatus::Active
+    }
+
+    /// Проверяет, истекла ли подписка
+    pub fn is_expired(&self) -> bool {
+        Utc::now() > self.expires_at
+    }
+
+    /// Проверяет, активна ли подписка (не истекла и статус Active)
+    pub fn is_active(&self) -> bool {
+        self.can_extend() && !self.is_expired()
+    }
+
+    /// Возвращает количество дней до истечения подписки
+    pub fn days_until_expiry(&self) -> i64 {
+        (self.expires_at - Utc::now()).num_days()
+    }
 }
 
 #[cfg(test)]
 mod tests {
-    use chrono::Months;
+    use chrono::{Days, Months};
     use super::*;
+    
+    fn create_test_subscription(
+        plan: SubscriptionPlan,
+        status: SubscriptionStatus,
+        days_until_expiry: u64,
+    ) -> Subscription {
+        let now = Utc::now();
+        Subscription::new(
+            UserId(42),
+            plan,
+            now,
+            now + Days::new(days_until_expiry),
+            status,
+            SubscriptionDevices(2),
+        )
+    }
 
     #[test]
     fn test_subscription_new_creates_valid_default_subscription() {
@@ -66,5 +102,120 @@ mod tests {
         assert_eq!(subscription.expires_at, expires_at);
         assert_eq!(subscription.status, status);
         assert_eq!(subscription.devices, devices);
+    }
+
+    #[test]
+    fn test_is_expired_returns_false_for_active_subscription() {
+        let sub = create_test_subscription(
+            SubscriptionPlan::Month3,
+            SubscriptionStatus::Active,
+            30,
+        );
+        assert!(!sub.is_expired(), "Подписка не должна быть истекшей");
+    }
+
+    #[test]
+    fn test_is_expired_returns_true_for_expired_subscription() {
+        let now = Utc::now();
+        let sub = Subscription::new(
+            UserId(42),
+            SubscriptionPlan::Month3,
+            now - Days::new(10),
+            now - Days::new(1),
+            SubscriptionStatus::Active,
+            SubscriptionDevices(2),
+        );
+        assert!(sub.is_expired(), "Подписка должна быть истекшей");
+    }
+
+    #[test]
+    fn test_is_active_returns_true_for_active_non_expired() {
+        let sub = create_test_subscription(
+            SubscriptionPlan::Month3,
+            SubscriptionStatus::Active,
+            30,
+        );
+        assert!(sub.is_active(), "Подписка должна быть активной");
+    }
+
+    #[test]
+    fn test_is_active_returns_false_for_inactive_status() {
+        let sub = create_test_subscription(
+            SubscriptionPlan::Month3,
+            SubscriptionStatus::Inactive,
+            30,
+        );
+        assert!(!sub.is_active(), "Неактивная подписка не должна быть активной");
+    }
+
+    #[test]
+    fn test_is_active_returns_false_for_expired_subscription() {
+        let now = Utc::now();
+        let sub = Subscription::new(
+            UserId(42),
+            SubscriptionPlan::Month3,
+            now - Days::new(10),
+            now - Days::new(1),
+            SubscriptionStatus::Active,
+            SubscriptionDevices(2),
+        );
+        assert!(!sub.is_active(), "Истекшая подписка не должна быть активной");
+    }
+
+    #[test]
+    fn test_can_extend_returns_true_for_active_status() {
+        let sub = create_test_subscription(
+            SubscriptionPlan::Month3,
+            SubscriptionStatus::Active,
+            30,
+        );
+        assert!(sub.can_extend(), "Активная подписка должна быть продлеваемой");
+    }
+
+    #[test]
+    fn test_can_extend_returns_false_for_inactive_status() {
+        let sub = create_test_subscription(
+            SubscriptionPlan::Month3,
+            SubscriptionStatus::Inactive,
+            30,
+        );
+        assert!(!sub.can_extend(), "Неактивная подписка не должна быть продлеваемой");
+    }
+
+    #[test]
+    fn test_can_extend_returns_false_for_canceled_status() {
+        let sub = create_test_subscription(
+            SubscriptionPlan::Month3,
+            SubscriptionStatus::Canceled,
+            30,
+        );
+        assert!(!sub.can_extend(), "Отменённая подписка не должна быть продлеваемой");
+    }
+
+    #[test]
+    fn test_days_until_expiry_returns_correct_value() {
+        let sub = create_test_subscription(
+            SubscriptionPlan::Month3,
+            SubscriptionStatus::Active,
+            5,
+        );
+        let days = sub.days_until_expiry();
+        // Проверяем, что дней примерно 5 (может быть 4 или 5 в зависимости от времени)
+        assert!(days >= 4 && days <= 5, "Должно быть примерно 5 дней до истечения");
+    }
+
+    #[test]
+    fn test_days_until_expiry_returns_negative_for_expired() {
+        let now = Utc::now();
+        let sub = Subscription::new(
+            UserId(42),
+            SubscriptionPlan::Month3,
+            now - Days::new(10),
+            now - Days::new(1),
+            SubscriptionStatus::Active,
+            SubscriptionDevices(2),
+        );
+        let days = sub.days_until_expiry();
+        assert!(days < 0, "Для истекшей подписки количество дней должно быть отрицательным");
     }
 }
